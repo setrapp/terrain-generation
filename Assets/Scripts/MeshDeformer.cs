@@ -23,7 +23,7 @@ public class MeshDeformer : MonoBehaviour {
 			Debug.Log(mesh.vertexCount);
 			int checkCount = 0;
 			List<List<int>> sharedVertices = new List<List<int>>();
-			/*for (int i = 0; i < mesh.vertices.Length; i++) {
+			for (int i = 0; i < mesh.vertices.Length; i++) {
 				List<int> sharedList = null;
 				for (int j = i + 1; j < mesh.vertices.Length; j++) {
 					checkCount++;
@@ -39,13 +39,14 @@ public class MeshDeformer : MonoBehaviour {
 					}
 				}
 			}
-			Debug.Log (checkCount);*/
 
 			for (int i = 0; i < mesh.vertices.Length; i++) {
+				if (i < 100)
+					Debug.Log (mesh.normals[i]);
 				vertices[i] += mesh.normals[i] * heightMap[(int)(mesh.uv[i].x * (arraySize.x - 1)), (int)(mesh.uv[i].y * (arraySize.y - 1))];
 			}
 
-			/*for (int i = 0; i < sharedVertices.Count; i++) {
+			for (int i = 0; i < sharedVertices.Count; i++) {
 				Vector3 sharedPos = Vector3.zero;
 				for (int j = 0; j < sharedVertices[i].Count; j++) {
 					sharedPos += vertices[sharedVertices[i][j]];
@@ -54,7 +55,7 @@ public class MeshDeformer : MonoBehaviour {
 				for (int j = 0; j < sharedVertices[i].Count; j++) {
 					vertices[sharedVertices[i][j]] = sharedPos;
 				}
-			}*/
+			}
 
 			mesh.vertices = vertices;
 			
