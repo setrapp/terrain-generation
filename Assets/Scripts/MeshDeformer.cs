@@ -3,46 +3,31 @@ using System.Collections;
 using System.Collections.Generic;
 
 public class MeshDeformer : MonoBehaviour {
-	public Mesh mesh = null;
+	public int meshIndex;
 	public MapShaperWrapper[] heightMapShapers = null;
-	//private static MeshSharedVertices storedSharedVertices;
+	private static List<MeshSharedVertices> storedSharedVertices;
 
 	void Start () {
-		if (mesh == null) {
-			mesh = gameObject.GetComponent<MeshFilter>().mesh;
-		}
-
 		Vector2 arraySize = new Vector2(129, 129);
 		float[,] heightMap = new float[(int)arraySize.x, (int)arraySize.y];
-		heightMapShapers[0].shaper.SeedRandom(heightMapShapers[0].seed);
+		heightMapShapers[0].shaper.SeedRandom((int)Time.time);//heightMapShapers[0].seed);
 		heightMapShapers[0].shaper.InitShaper();
-		heightMap = heightMapShapers[0].shaper.ShapeHeightMap(new MapShaperInfo(heightMap, arraySize, heightMapShapers[0].seed, 0, 0, new Vector3(1, 5, 1)));
+		//heightMap = heightMapShapers[0].shaper.ShapeHeightMap(new MapShaperInfo(heightMap, arraySize, heightMapShapers[0].seed, 0, 0, new Vector3(1, 5, 1)));
+
+		// Temporary
+		if (storedSharedVertices == null) {
+			storedSharedVertices = new List<MeshSharedVertices>();
+		}
+		heightMap = heightMapShapers[0].shaper.ShapeHeightMap(new MapShaperInfo(heightMap, arraySize, storedSharedVertices.Count, 0, 0, new Vector3(1, 5, 1)));
+
+		Mesh mesh = (Mesh)Instantiate(DeformableMeshes.Instance.meshes[meshIndex]);
 
 		Vector3[] vertices = mesh.vertices;
 		if (mesh != null) {
-			Debug.Log(mesh.vertexCount);
-			int checkCount = 0;
-			List<List<int>> sharedVertices = new List<List<int>>();
-			for (int i = 0; i < mesh.vertices.Length; i++) {
-				List<int> sharedList = null;
-				for (int j = i + 1; j < mesh.vertices.Length; j++) {
-					checkCount++;
-					if (mesh.vertices[i] == mesh.vertices[j]) {
-						if (sharedList == null) {
-							sharedList = new List<int>();
-							sharedVertices.Add(sharedList);
-							sharedList.Add(i);
-							sharedList.Add(j);
-						} else {
-							sharedList.Add(j);
-						}
-					}
-				}
-			}
+
+			List<List<int>> sharedVertices = FindSharedVertices(meshIndex);
 
 			for (int i = 0; i < mesh.vertices.Length; i++) {
-				if (i < 100)
-					Debug.Log (mesh.normals[i]);
 				vertices[i] += mesh.normals[i] * heightMap[(int)(mesh.uv[i].x * (arraySize.x - 1)), (int)(mesh.uv[i].y * (arraySize.y - 1))];
 			}
 
@@ -62,20 +47,63 @@ public class MeshDeformer : MonoBehaviour {
 			mesh.RecalculateBounds();
 			mesh.RecalculateNormals();
 
+			MeshFilter meshFilter = gameObject.GetComponent<MeshFilter>();
+			if (meshFilter != null) {
+				meshFilter.mesh = mesh;
+			}
+
 			MeshCollider meshCollider = gameObject.GetComponent<MeshCollider>();
 			if (meshCollider != null) {
 				meshCollider.sharedMesh = mesh;
 			}
 		}
-
 	}
 
-	/*private class MeshSharedVertices {
-		public MeshSharedVertices(Mesh mesh, List<List<int>> sharedVertices) {
-			this.mesh = mesh;
+	static public List<List<int>> FindSharedVertices(int meshIndex) {
+		if (storedSharedVertices == null) {
+			storedSharedVertices = new List<MeshSharedVertices>();
+		}
+		List<List<int>> sharedVertices = null;
+		Mesh mesh = DeformableMeshes.Instance.meshes[meshIndex];
+		for (int i = 0; i < storedSharedVertices.Count && sharedVertices == null; i++) {
+			if (meshIndex == storedSharedVertices[i].meshIndex) {
+				sharedVertices = storedSharedVertices[i].sharedVertices;
+			}
+		}
+		if (sharedVertices == null) {
+			sharedVertices = new List<List<int>>();
+			for (int i = 0; i < mesh.vertices.Length; i++) {
+				List<int> sharedList = null;
+				for (int j = i + 1; j < mesh.vertices.Length; j++) {
+					if (mesh.vertices[i] == mesh.vertices[j]) {
+						if (sharedList == null) {
+							sharedList = new List<int>();
+							sharedVertices.Add(sharedList);
+							sharedList.Add(i);
+							sharedList.Add(j);
+						} else {
+							sharedList.Add(j);
+						}
+					}
+				}
+			}
+			storedSharedVertices.Add(new MeshSharedVertices(meshIndex, sharedVertices));
+		}
+		return sharedVertices;
+	}
+
+	static public void FindSharedVerticesOnAll() {
+		for (int i = 0; i < DeformableMeshes.Instance.meshes.Length; i++) {
+			FindSharedVertices(i);
+		}
+	}
+
+	private class MeshSharedVertices {
+		public MeshSharedVertices(int meshIndex, List<List<int>> sharedVertices) {
+			this.meshIndex = meshIndex;
 			this.sharedVertices = sharedVertices;
 		}
-		public Mesh mesh;
+		public int meshIndex;
 		public List<List<int>> sharedVertices;
-	}*/
+	}
 }
