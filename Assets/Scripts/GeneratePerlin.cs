@@ -194,26 +194,32 @@ public class GeneratePerlin : MapShaper {
 	}
 
 	// fill a 2D array with perlin noise which represents a heightmap
-	public override float[,] ShapeHeightMap(float[,] heightMap, Vector2 arraySize, int seed, float x, float z, float desiredScale = 1, int resolutionScale = 1)
+	public override float[,] ShapeHeightMap(MapShaperInfo info)
 	{
-		int width = (int)arraySize.x;
-		int height = (int)arraySize.y;
+		int width = (int)info.arraySize.x;
+		int height = (int)info.arraySize.y;
+
+		float[,] newHeightMap = new float[(int)info.arraySize.x, (int)info.arraySize.y];
+
 		// since we want the noise to be consistent based on the indices
 		// of the map, we scale and offset them
 		for (int i = 0; i < width; i++) {
 			for (int j = 0; j < height; j++) {
-				if (ShouldUpdateHeight(resolutionScale, i, j))
-				{
-					heightMap[i, j] += height2d((i + x) * internalScale, (j + z) * internalScale, perlinOctaves, perlinLacunarity, perlinGain);
-					//currentHeight = height2d(i * internalScale, j * internalScale, perlinOctaves, perlinLacunarity, perlinGain);
-				}
-				//heightMap[i, j] += currentHeight;
+				int iIndex = (i < width - 1) ? i : i + 1;
+				int jIndex= (j < height - 1) ? j : j + 1;
+				newHeightMap[i, j] = height2d((iIndex * info.mapToTerrainScale.x + info.x) * internalScale, (jIndex * info.mapToTerrainScale.z + info.z) * internalScale, perlinOctaves, perlinLacunarity, perlinGain);
 			}
 		}
 
-		heightMap = normalizePerlin(heightMap, new Vector2(width, height));
+		newHeightMap = normalizePerlin(newHeightMap, new Vector2(width, height));
 
-		return heightMap;
+		for (int i = 0; i < info.arraySize.x; i++) {
+			for (int j = 0; j < info.arraySize.y; j++) {
+				info.heightMap[i, j] += (newHeightMap[i, j] - 0.5f) * info.mapToTerrainScale.y;
+			}
+		}
+		
+		return info.heightMap;
 	}
 
 	// Normalize all data

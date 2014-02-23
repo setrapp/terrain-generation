@@ -5,22 +5,24 @@ public class GenerateDiamondSqaure : MapShaper
 {
 	public float roughness = 0.5f;
 
-	public override float[,] ShapeHeightMap(float[,] heightMap, Vector2 arraySize, int seed, float x, float z, float desiredScale = 1, int resolutionScale = 1)
+	public override float[,] ShapeHeightMap(MapShaperInfo info)
 	{				
-		SeedRandom(seed + (int)(x + z));
+		SeedRandom(info.seed + (int)(info.x + info.z));
 
-		int width = (int)arraySize.x;
-		int length = (int)arraySize.y;
+		int width = (int)info.arraySize.x;
+		int length = (int)info.arraySize.y;
 
-		float iterationScale = desiredScale;
+		float iterationScale = 1.0f;
 		int iIndexJump = width - 1;
 		int jIndexJump = length - 1;
-		
+
+		float[,] newHeightMap = new float[(int)info.arraySize.x, (int)info.arraySize.y];
+
 		// Offset corner points.
-		heightMap[0, 0] += (0.5f - (float)random.NextDouble()) * iterationScale;
-		heightMap[width - 1, 0] += (0.5f - (float)random.NextDouble()) * iterationScale;
-		heightMap[width - 1, length - 1] += (0.5f - (float)random.NextDouble()) * iterationScale;
-		heightMap[0, length - 1] += (0.5f - (float)random.NextDouble()) * iterationScale;
+		newHeightMap[0, 0] = (0.5f - (float)random.NextDouble()) * iterationScale;
+		newHeightMap[width - 1, 0] = (0.5f - (float)random.NextDouble()) * iterationScale;
+		newHeightMap[width - 1, length - 1] = (0.5f - (float)random.NextDouble()) * iterationScale;
+		newHeightMap[0, length - 1] = (0.5f - (float)random.NextDouble()) * iterationScale;
 
 		/*heightMap[0, 0] += (float)random.NextDouble() * iterationScale;
 		heightMap[width - 1, 0] += (float)random.NextDouble() * iterationScale;
@@ -41,10 +43,10 @@ public class GenerateDiamondSqaure : MapShaper
 				for (int j = iIndexJump; j < length; j += jIndexJumpX2) {
 					int preI = i - iIndexJump, postI = i + iIndexJump;
 					int preJ = j - jIndexJump, postJ = j + jIndexJump;
-					float sum = (heightMap[preI, preJ] + heightMap[postI, preJ] 
-						+ heightMap[postI, postJ] + heightMap[preI, postJ]);
-					heightMap[i, j] = sum / 4;
-					heightMap[i,j] += (0.5f - (float)random.NextDouble()) * iterationScaleX2;
+					float sum = (newHeightMap[preI, preJ] + newHeightMap[postI, preJ] 
+						+ newHeightMap[postI, postJ] + newHeightMap[preI, postJ]);
+					newHeightMap[i, j] = sum / 4;
+					newHeightMap[i, j] += (float)random.NextDouble() * iterationScale;
 				}
 			}
 
@@ -59,27 +61,27 @@ public class GenerateDiamondSqaure : MapShaper
 					float neighbor1, neighbor2, neighbor3, neighbor4 = 0;
 					float sum = 0;
 					if (i > 0) {
-						neighbor1 = heightMap[preI, j];
+						neighbor1 = newHeightMap[preI, j];
 						sum += neighbor1;
 						neighborCount++;
 					}
 					if (i < width - 1) {
-						neighbor2 = heightMap[postI, j];
+						neighbor2 = newHeightMap[postI, j];
 						sum += neighbor2;
 						neighborCount++;
 					}
 					if (j > 0) {
-						neighbor3 = heightMap[i, preJ];
+						neighbor3 = newHeightMap[i, preJ];
 						sum += neighbor3;
 						neighborCount++;
 					}
 					if (j < length - 1) {
-						neighbor4 = heightMap[i, postJ];
+						neighbor4 = newHeightMap[i, postJ];
 						sum += neighbor4;
 						neighborCount++;
 					}
-					heightMap[i, j] = (sum / neighborCount);
-					heightMap[i,j] += (0.5f - (float)random.NextDouble()) * iterationScaleX2;
+					newHeightMap[i, j] = (sum / neighborCount);
+					newHeightMap[i, j] += (float)random.NextDouble() * iterationScale;
 				}
 			}
 
@@ -91,8 +93,14 @@ public class GenerateDiamondSqaure : MapShaper
 			iIndexJump /= 2;
 			jIndexJump /= 2;
 		}
-		
-		return heightMap;
+
+		for (int i = 0; i < info.arraySize.x; i++) {
+			for (int j = 0; j < info.arraySize.y; j++) {
+				info.heightMap[i, j] += (newHeightMap[i, j] - 0.5f) * info.mapToTerrainScale.y;
+			}
+		}
+
+		return info.heightMap;
 	}
 }
 		               

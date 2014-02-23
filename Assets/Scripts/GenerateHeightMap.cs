@@ -10,25 +10,24 @@ public class GenerateHeightMap : MonoBehaviour
 	private int width;
 	private int length;
 	private int height;
-	private const int MIN_RESOLUTION = 33;
-	private int resolutionScale = 1;							// Scale small resolutions to fit terrain minimum
+	public float startingHeight = 0.5f;
 	public GameObject[,] terrain;
 	public Vector3[,] whereIsTerrain;
 	public Material material;
 	private float[][,] heightMaps;
 	private int alphaTileSize;
+	public bool ignoreShapers = false;
 	public MapShaperWrapper[] heightMapShapers = null;
 	public GameObject player = null;
+	private SplatPrototype[] terrainSplats;
+	public HeightTexture[] heightTextures;
+	private Vector2 distBetweenIndices;
 
 	// Use this for initialization
 	void Start ()
 	{
-		/*TODO: Ensure that mapsize is a power of 2 + 1*/
-		// scale map size to fit minimum resolution
-		if (mapSize < MIN_RESOLUTION) {
-			//resolutionScale = (MIN_RESOLUTION - 1) / (mapSize - 1);
-			//mapSize = MIN_RESOLUTION;
-		}
+		distBetweenIndices.x = terrainSize.x / mapSize;
+		distBetweenIndices.y = terrainSize.z / mapSize;
 
 		terrain = new GameObject[chunkCount,chunkCount];
 		whereIsTerrain = new Vector3[chunkCount,chunkCount];
@@ -65,67 +64,13 @@ public class GenerateHeightMap : MonoBehaviour
 			x++;
 		}
 
-		// put a few different textures on them
-		// note: this will need some work
-		/*SplatPrototype[] test = new SplatPrototype[3];
-     	test[0] = new SplatPrototype(); 
-		test[0].texture = (Texture2D)Resources.Load("GoodDirt",typeof(Texture2D));
-		test[0].tileOffset = new Vector2(0, 0); 
-		test[0].tileSize = new Vector2(128, 128);
-		
-		test[1] = new SplatPrototype(); 
-		test[1].texture = (Texture2D)Resources.Load("Grassy",typeof(Texture2D));
-		test[1].tileOffset = new Vector2(0, 0); 
-		test[1].tileSize = new Vector2(128, 128);
-
-		test[2] = new SplatPrototype(); 
-		test[2].texture = (Texture2D)Resources.Load("snow",typeof(Texture2D));
-		test[2].tileOffset = new Vector2(0, 0); 
-		test[2].tileSize = new Vector2(128, 128);
-
-    	tData.splatPrototypes = test;
-		
-    	float[, ,] alphamaps = new float[128, 128, test.Length];
-     	float[, ,] singlePoint = new float[1, 1, test.Length];
-		
-    	// set the actual textures in each tile here.
-		for (int i=0;i<ALPHA_TILE_SIZE;i++) {
-			for (int j=0;j<ALPHA_TILE_SIZE;j++){
-				
-				if (heightMap[i,j*length/ALPHA_TILE_SIZE] > 0.5) {
-					alphamaps[i,j,0] = 0;
-					alphamaps[i,j,1] = 0;
-					alphamaps[i,j,2] = 1;
-					singlePoint = new float[1, 1, test.Length];
-					singlePoint[0,0,0] = 0f;
-					singlePoint[0,0,1] = 0f;
-					singlePoint[0,0,2] = 1f;
-					
-				} else if (heightMap[i,j*length/ALPHA_TILE_SIZE] > 0.0) {
-					alphamaps[i,j,0] = 0.0f;
-					alphamaps[i,j,1] = 1.0f;
-					alphamaps[i,j,2] = 0;
-					singlePoint = new float[1, 1, test.Length];
-					singlePoint[0,0,0] = 0f;
-					singlePoint[0,0,1] = 1f;
-					singlePoint[0,0,2] = 0f;
-
-				} else {
-					alphamaps[i,j,0] = 1.0f;
-					alphamaps[i,j,1] = 0.0f;
-					alphamaps[i,j,2] = 0;
-					singlePoint = new float[1, 1, test.Length];
-					singlePoint[0,0,0] = 1f;
-					singlePoint[0,0,1] = 0f;
-					singlePoint[0,0,2] = 0f;
-
-				}
-
-				// this is amazingly stupid, but alpha is only able to be at every point
-				// and not altogether as far as I can tell.
-				tData.SetAlphamaps(j, i, singlePoint);
-			}
-		}*/
+		terrainSplats = new SplatPrototype[heightTextures.Length];
+		for (int i = 0; i < terrainSplats.Length; i++) {
+			terrainSplats[i] = new SplatPrototype(); 
+			terrainSplats[i].texture = heightTextures[i].texture;
+			terrainSplats[i].tileOffset = new Vector2(0, 0); 
+			terrainSplats[i].tileSize = new Vector2(64, 64);//terrainSize.x, terrainSize.z);
+		}
 
 		// set up the terrain chunks with the default tile
 		for (int i=0; i<chunkCount; i++) {
@@ -133,6 +78,7 @@ public class GenerateHeightMap : MonoBehaviour
 				CreateTerrain(i, j);
 			}
 		}
+		TextreAllTerrain();
 
 		if (player != null) {
 			RaycastHit terrainHit;
@@ -147,7 +93,7 @@ public class GenerateHeightMap : MonoBehaviour
 	public void ResetHeightMap(float[,] heightMap) {
 	for (int i=0; i<width; i++) {
 			for (int j=0;j<length; j++) {
-				heightMap[i, j] = 0.5f;
+				heightMap[i, j] = startingHeight;
 			}
 		}
 	}
@@ -262,6 +208,8 @@ public class GenerateHeightMap : MonoBehaviour
 				}
 				break;
 		}
+
+		TextreAllTerrain();
 	}
 	
 	public void CreateTerrain(int i, int j, bool createNewHeightMap = true) {
@@ -278,24 +226,67 @@ public class GenerateHeightMap : MonoBehaviour
 		tData.baseMapResolution = width;
 		tData.SetHeights(0,0,heightMaps[index]);
 		tData.size = new Vector3(terrainSize.x, terrainSize.y, terrainSize.z);
+		tData.splatPrototypes = terrainSplats;
 		
 		if (terrain[i,j]) {
 			GameObject.Destroy(terrain[i,j]);
 		}
 		terrain[i,j] = Terrain.CreateTerrainGameObject(tData);
 		terrain[i,j].transform.position = whereIsTerrain[i,j];
-		terrain[i,j].layer = LayerMask.NameToLayer("Terrain");		
+		terrain[i,j].layer = LayerMask.NameToLayer("Terrain");
+		terrain [i, j].GetComponent<Terrain>().heightmapPixelError = 0;
+	}
+
+	private void TextreAllTerrain() {
+		for (int i = 0; i < chunkCount; i++) {
+			for (int j = 0; j < chunkCount; j++) {
+				TextureTerrain(i, j);
+			}
+		}
+	}
+
+	private void TextureTerrain(int i, int j) {
+		float[,] heightMap = heightMaps[i * chunkCount + j];
+		TerrainData tData = terrain[i, j].GetComponent<Terrain>().terrainData;
+		float[,,] alphas = new float[tData.alphamapWidth, tData.alphamapHeight, terrainSplats.Length];
+		for (int k = 0; k < tData.alphamapWidth; k++)
+		{
+			for (int l = 0; l < tData.alphamapHeight; l++) {
+				int overlapCount = 0;
+				for (int m = 0; m < heightTextures.Length; m++)
+				{
+					alphas[k, l, m] = 0;
+				}
+				for (int m = 0; m < heightTextures.Length; m++)
+				{
+					if (heightMap[k, l] >= heightTextures[m].minHeight && heightMap[k, l] <= heightTextures[m].maxHeight){
+						alphas[k, l, m] = 1.0f;
+						overlapCount++;
+					}
+				}
+				for (int m = 0; m < heightTextures.Length; m++)
+				{
+					alphas[k, l, m] /= overlapCount;
+				}
+			}
+		}
+		tData.SetAlphamaps(0, 0, alphas);
 	}
 
     public float[,] ShapeHeightMap(float[,] heightMap, Vector2 arraySize, int index)
     {
+		if (ignoreShapers) {
+			return heightMap;
+		}
+
 		int iIndex = index / chunkCount;
 		int jIndex = index % chunkCount;
 
         for (int i = 0; i < heightMapShapers.Length; i++)
         {
 			Vector3 startPoint = whereIsTerrain[iIndex, jIndex];
-			heightMap = heightMapShapers[i].shaper.ShapeHeightMap(heightMap, arraySize, heightMapShapers[i].seed, startPoint.x, startPoint.z, heightMapShapers[i].scale, resolutionScale);
+			//Debug.Log("----- " + iIndex + " " + jIndex + " -----");
+			heightMap = heightMapShapers[i].shaper.ShapeHeightMap(new MapShaperInfo(heightMap, arraySize, heightMapShapers[i].seed, startPoint.x, startPoint.z, new Vector3(distBetweenIndices.x, heightMapShapers[i].scale, distBetweenIndices.y)));
         }
 		
 		// Determine what chunks surround this one for averaging.
@@ -323,7 +314,6 @@ public class GenerateHeightMap : MonoBehaviour
 		heightMapsToAvg[curIndexToAvg] = heightMap;
 
 		// Average height values at indices shared by chunks
-		/*TODO destroying one terrain twice to create, make a function that updates a list of terrains*/
 		if (heightMapsToAvg [0] != null && heightMapsToAvg [1] != null && heightMapsToAvg [2] != null && heightMapsToAvg [3] != null) {
 			AverageHeightMaps (heightMapsToAvg);
 			if (heightMapsToAvg [ijOppIndexToAvg] != null && terrain[iIndex + iOtherMove, jIndex + jOtherMove] != null) {
@@ -342,8 +332,6 @@ public class GenerateHeightMap : MonoBehaviour
 		
 		return heightMap;
     }
-	
-	/*TODO: Seems can be fixed by moving the next closest vertices so that the derivate continues too (like bezier curve splicing)*/
 	
 	private void AverageHeightMaps(float[][,] heightMapsToAvg) {
 		/* height map indices
@@ -418,6 +406,13 @@ public class MapShaperWrapper {
 	public MapShaper shaper = null;
 	public int seed = 0;
 	public float scale = 1;
+}
+
+[Serializable]
+public class HeightTexture {
+	public Texture2D texture;
+	public float minHeight;
+	public float maxHeight;
 }
 
 public enum MapShift {
