@@ -3,34 +3,32 @@ using System.Collections;
 using System.Collections.Generic;
 
 public class MeshDeformer : MonoBehaviour {
-	public int meshIndex;
-	public MapShaperWrapper[] heightMapShapers = null;
 	private static List<MeshSharedVertices> storedSharedVertices;
+	public int meshIndex;
+	public Vector2 heightMapSize;
 
-	void Start () {
-		Vector2 arraySize = new Vector2(129, 129);
-		float[,] heightMap = new float[(int)arraySize.x, (int)arraySize.y];
-		heightMapShapers[0].shaper.SeedRandom((int)Time.time);//heightMapShapers[0].seed);
-		heightMapShapers[0].shaper.InitShaper();
-		//heightMap = heightMapShapers[0].shaper.ShapeHeightMap(new MapShaperInfo(heightMap, arraySize, heightMapShapers[0].seed, 0, 0, new Vector3(1, 5, 1)));
+	public void DeformMesh(MapShaperWrapper[] heightMapShapers, int seedAddition, int newMeshIndex = -1) {
+		float[,] heightMap = new float[(int)heightMapSize.x, (int)heightMapSize.y];
 
-		// Temporary
-		if (storedSharedVertices == null) {
-			storedSharedVertices = new List<MeshSharedVertices>();
+		for (int i = 0; i < heightMapShapers.Length; i++) {
+			heightMap = heightMapShapers[i].shaper.ShapeHeightMap (new MapShaperInfo (heightMap, heightMapSize, heightMapShapers[i].seed, transform.position.x, transform.position.z, new Vector3 (1, 1, 1)));
 		}
-		heightMap = heightMapShapers[0].shaper.ShapeHeightMap(new MapShaperInfo(heightMap, arraySize, storedSharedVertices.Count, 0, 0, new Vector3(1, 5, 1)));
+		
+		if (newMeshIndex >= 0) {
+			meshIndex = newMeshIndex;
+		}
 
 		Mesh mesh = (Mesh)Instantiate(DeformableMeshes.Instance.meshes[meshIndex]);
-
+		
 		Vector3[] vertices = mesh.vertices;
 		if (mesh != null) {
-
+			
 			List<List<int>> sharedVertices = FindSharedVertices(meshIndex);
-
+			
 			for (int i = 0; i < mesh.vertices.Length; i++) {
-				vertices[i] += mesh.normals[i] * heightMap[(int)(mesh.uv[i].x * (arraySize.x - 1)), (int)(mesh.uv[i].y * (arraySize.y - 1))];
+				vertices[i] += mesh.normals[i] * heightMap[(int)(mesh.uv[i].x * (heightMapSize.x - 1)), (int)(mesh.uv[i].y * (heightMapSize.y - 1))];
 			}
-
+			
 			for (int i = 0; i < sharedVertices.Count; i++) {
 				Vector3 sharedPos = Vector3.zero;
 				for (int j = 0; j < sharedVertices[i].Count; j++) {
@@ -41,17 +39,17 @@ public class MeshDeformer : MonoBehaviour {
 					vertices[sharedVertices[i][j]] = sharedPos;
 				}
 			}
-
+			
 			mesh.vertices = vertices;
 			
 			mesh.RecalculateBounds();
-			mesh.RecalculateNormals();
-
+			//mesh.RecalculateNormals();
+			
 			MeshFilter meshFilter = gameObject.GetComponent<MeshFilter>();
 			if (meshFilter != null) {
 				meshFilter.mesh = mesh;
 			}
-
+			
 			MeshCollider meshCollider = gameObject.GetComponent<MeshCollider>();
 			if (meshCollider != null) {
 				meshCollider.sharedMesh = mesh;
