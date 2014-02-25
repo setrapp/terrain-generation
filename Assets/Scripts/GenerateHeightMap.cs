@@ -22,6 +22,7 @@ public class GenerateHeightMap : MonoBehaviour
 	private SplatPrototype[] terrainSplats;
 	public HeightTexture[] heightTextures;
 	private Vector2 distBetweenIndices;
+	public GenerateClouds cloudGen;
 
 	// Use this for initialization
 	void Start ()
@@ -125,11 +126,6 @@ public class GenerateHeightMap : MonoBehaviour
 				}
 				for (int i = 0; i < chunkCount; i++) {
 					CreateTerrain(0, i);
-				}
-				for (int i = 0; i < chunkCount; i++) {
-					//Terrain[] neighbors = {null, (i < chunkCount - 1) ? terrain[0, i + 1].GetComponent<Terrain>() : null, terrain[1, i].GetComponent<Terrain>(), (i > 0) ? terrain[0, i - 1].GetComponent<Terrain>() : null};
-				//	terrain[0, i].GetComponent<Terrain>().SetNeighbors(neighbors[0], neighbors[1], neighbors[2], neighbors[3]);
-					/*TODO: Stop unity from crashing the next time a boundary is crossed*/
 				}
 				for (int i = 0; i < chunkCount; i++) {
 					terrain[0, i].GetComponent<Terrain>().Flush();
