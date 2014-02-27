@@ -282,6 +282,7 @@ public class GenerateHeightMap : MonoBehaviour
 				for (int m = 0; m < heightSigns.Length; m++)
 				{
 					float signCheck = (float)textureRandom.NextDouble();
+					float signRotation = (float)textureRandom.NextDouble() * 360;
 					if (heightMap[k, l] >= heightSigns[m].minHeight && heightMap[k, l] <= heightSigns[m].maxHeight && signCheck < heightSigns[m].chanceOfAppearance){
 						Vector3 signPos = whereIsTerrain[i, j] + new Vector3(terrainSize.x * ((float)l / tData.alphamapWidth), terrainSize.y + 1, terrainSize.z * ((float)k / tData.alphamapHeight));
 						RaycastHit terrainHit; 	
@@ -289,7 +290,7 @@ public class GenerateHeightMap : MonoBehaviour
 							signPos.y = terrainHit.point.y;
 
 							if (terrainHit.collider.gameObject.layer == LayerMask.NameToLayer("Terrain")) {
-								GameObject sign = (GameObject)GameObject.Instantiate(heightSigns[m].sign, signPos, Quaternion.identity);
+								GameObject sign = (GameObject)GameObject.Instantiate(heightSigns[m].sign, signPos, Quaternion.AngleAxis(signRotation, Vector3.up));
 							}
 						}
 					}
