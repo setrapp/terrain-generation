@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System;
+using System.Collections.Generic;
 
 public class GenerateHeightMap : MonoBehaviour
 {
@@ -21,8 +22,12 @@ public class GenerateHeightMap : MonoBehaviour
 	public GameObject player = null;
 	private SplatPrototype[] terrainSplats;
 	public HeightTexture[] heightTextures;
+	private List<GameObject> generatedSigns;
+	public HeightSign[] heightSigns;
 	private Vector2 distBetweenIndices;
 	public GenerateClouds cloudGen;
+	private System.Random textureRandom;
+	public int textureSeed;
 
 	// Use this for initialization
 	void Start ()
@@ -79,7 +84,8 @@ public class GenerateHeightMap : MonoBehaviour
 				CreateTerrain(i, j);
 			}
 		}
-		TextreAllTerrain();
+		generatedSigns = new List<GameObject>();
+		TextureAllTerrain();
 
 		if (player != null) {
 			RaycastHit terrainHit;
@@ -205,7 +211,7 @@ public class GenerateHeightMap : MonoBehaviour
 				break;
 		}
 
-		TextreAllTerrain();
+		TextureAllTerrain();
 	}
 	
 	public void CreateTerrain(int i, int j, bool createNewHeightMap = true) {
@@ -233,7 +239,12 @@ public class GenerateHeightMap : MonoBehaviour
 		terrain [i, j].GetComponent<Terrain>().heightmapPixelError = 0;
 	}
 
-	private void TextreAllTerrain() {
+	private void TextureAllTerrain() {
+		for (int i = 0; i < generatedSigns.Count;) {
+			GameObject.Destroy(generatedSigns[i]);
+			generatedSigns.RemoveAt(i);
+		}
+
 		for (int i = 0; i < chunkCount; i++) {
 			for (int j = 0; j < chunkCount; j++) {
 				TextureTerrain(i, j);
@@ -242,12 +253,14 @@ public class GenerateHeightMap : MonoBehaviour
 	}
 
 	private void TextureTerrain(int i, int j) {
+		textureRandom = new System.Random(textureSeed + (int)(whereIsTerrain[i, j].x + whereIsTerrain[i, j].z));
 		float[,] heightMap = heightMaps[i * chunkCount + j];
 		TerrainData tData = terrain[i, j].GetComponent<Terrain>().terrainData;
 		float[,,] alphas = new float[tData.alphamapWidth, tData.alphamapHeight, terrainSplats.Length];
 		for (int k = 0; k < tData.alphamapWidth; k++)
 		{
 			for (int l = 0; l < tData.alphamapHeight; l++) {
+				// Apply splatmap based on height.
 				int overlapCount = 0;
 				for (int m = 0; m < heightTextures.Length; m++)
 				{
@@ -263,6 +276,23 @@ public class GenerateHeightMap : MonoBehaviour
 				for (int m = 0; m < heightTextures.Length; m++)
 				{
 					alphas[k, l, m] /= overlapCount;
+				}
+
+				// Add signage based on height.
+				for (int m = 0; m < heightSigns.Length; m++)
+				{
+					float signCheck = (float)textureRandom.NextDouble();
+					if (heightMap[k, l] >= heightSigns[m].minHeight && heightMap[k, l] <= heightSigns[m].maxHeight && signCheck < heightSigns[m].chanceOfAppearance){
+						Vector3 signPos = whereIsTerrain[i, j] + new Vector3(terrainSize.x * ((float)l / tData.alphamapWidth), terrainSize.y + 1, terrainSize.z * ((float)k / tData.alphamapHeight));
+						RaycastHit terrainHit; 	
+						if (Physics.Raycast(signPos, Vector3.down, out terrainHit, Mathf.Infinity, ~(LayerMask.NameToLayer("Terrain")))) {
+							signPos.y = terrainHit.point.y;
+
+							if (terrainHit.collider.gameObject.layer == LayerMask.NameToLayer("Terrain")) {
+								GameObject sign = (GameObject)GameObject.Instantiate(heightSigns[m].sign, signPos, Quaternion.identity);
+							}
+						}
+					}
 				}
 			}
 		}
@@ -281,7 +311,6 @@ public class GenerateHeightMap : MonoBehaviour
         for (int i = 0; i < heightMapShapers.Length; i++)
         {
 			Vector3 startPoint = whereIsTerrain[iIndex, jIndex];
-			//Debug.Log("----- " + iIndex + " " + jIndex + " -----");
 			heightMap = heightMapShapers[i].shaper.ShapeHeightMap(new MapShaperInfo(heightMap, arraySize, heightMapShapers[i].seed, startPoint.x, startPoint.z, new Vector3(distBetweenIndices.x, heightMapShapers[i].scale, distBetweenIndices.y)));
         }
 		
@@ -409,6 +438,13 @@ public class HeightTexture {
 	public Texture2D texture;
 	public float minHeight;
 	public float maxHeight;
+}
+[Serializable]
+public class HeightSign {
+	public GameObject sign;
+	public float minHeight;
+	public float maxHeight;
+	public float chanceOfAppearance;
 }
 
 public enum MapShift {

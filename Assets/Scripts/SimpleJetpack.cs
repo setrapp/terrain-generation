@@ -88,14 +88,14 @@ public class SimpleJetpack : MonoBehaviour
 					if (Mathf.Abs(characterMotor.movement.velocity.z + extendedAccleration) > characterMotor.movement.maxForwardSpeed) {
 						extendedAccleration = Mathf.Max(characterMotor.movement.maxForwardSpeed - characterMotor.movement.velocity.z, 0);
 					}
-					characterMotor.movement.velocity.z += extendedAccleration;
+					characterMotor.movement.velocity += transform.TransformDirection(new Vector3(0, 0, extendedAccleration));
 				}
 				if (Input.GetAxis("Horizontal") != 0) {
 					float extendedAccleration = (characterMotor.movement.maxGroundAcceleration / 2) * Input.GetAxis("Horizontal") * Time.deltaTime;
 					if (Mathf.Abs(characterMotor.movement.velocity.x + extendedAccleration) > characterMotor.movement.maxForwardSpeed) {
 						extendedAccleration = Mathf.Max(characterMotor.movement.maxForwardSpeed - characterMotor.movement.velocity.x, 0);
 					}
-					characterMotor.movement.velocity.x += extendedAccleration;
+					characterMotor.movement.velocity += transform.TransformDirection(new Vector3(extendedAccleration, 0, 0));
 				}
 			}
 		}
