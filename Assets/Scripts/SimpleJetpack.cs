@@ -37,8 +37,6 @@ public class SimpleJetpack : MonoBehaviour
 			InitJetpack();
 		}
 
-		/*TODO Make jetpack able to cause force in perpendicular direction (ability to control forward momentum would be nice)*/
-
 		if (characterMotor != null) {
 			// Remove jetpack speed from character to fiddle with in isolation.
 			characterMotor.movement.velocity -= transform.up * jetpackSpeed * speedScale;
@@ -85,15 +83,19 @@ public class SimpleJetpack : MonoBehaviour
 			if (extendGroundControls) {
 				if (Input.GetAxis("Vertical") != 0) {
 					float extendedAccleration = (characterMotor.movement.maxGroundAcceleration / 2) * Input.GetAxis("Vertical") * Time.deltaTime;
-					if (Mathf.Abs(characterMotor.movement.velocity.z + extendedAccleration) > characterMotor.movement.maxForwardSpeed) {
+					if (characterMotor.movement.velocity.z + extendedAccleration > characterMotor.movement.maxForwardSpeed) {
 						extendedAccleration = Mathf.Max(characterMotor.movement.maxForwardSpeed - characterMotor.movement.velocity.z, 0);
+					} else if (characterMotor.movement.velocity.z + extendedAccleration < -characterMotor.movement.maxForwardSpeed) {
+						extendedAccleration = Mathf.Min(-characterMotor.movement.maxForwardSpeed - characterMotor.movement.velocity.z, 0);
 					}
 					characterMotor.movement.velocity += transform.TransformDirection(new Vector3(0, 0, extendedAccleration));
 				}
 				if (Input.GetAxis("Horizontal") != 0) {
 					float extendedAccleration = (characterMotor.movement.maxGroundAcceleration / 2) * Input.GetAxis("Horizontal") * Time.deltaTime;
-					if (Mathf.Abs(characterMotor.movement.velocity.x + extendedAccleration) > characterMotor.movement.maxForwardSpeed) {
+					if (characterMotor.movement.velocity.x + extendedAccleration > characterMotor.movement.maxForwardSpeed) {
 						extendedAccleration = Mathf.Max(characterMotor.movement.maxForwardSpeed - characterMotor.movement.velocity.x, 0);
+					} else if (characterMotor.movement.velocity.x + extendedAccleration < -characterMotor.movement.maxForwardSpeed) {
+						extendedAccleration = Mathf.Min(-characterMotor.movement.maxForwardSpeed - characterMotor.movement.velocity.x, 0);
 					}
 					characterMotor.movement.velocity += transform.TransformDirection(new Vector3(extendedAccleration, 0, 0));
 				}
@@ -142,4 +144,3 @@ public class SimpleJetpack : MonoBehaviour
 		}
 	}
 }
-
